@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Print Orders Admin</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Printing Orders Dashboard</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Status</th>
+          <th>File</th>
+          <th>Options</th>
+          <th>Total</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td>{{ order.id }}</td>
+          <td>{{ order.status.value }}</td>
+          <td><a href="/files/{{ order.file_path.split('/')[-1] }}" target="_blank">{{ order.file_name }}</a></td>
+          <td>{{ order.size }} / {{ order.print_type }} / {{ order.material }}</td>
+          <td>${{ order.total_price or '-' }}</td>
+          <td>
+            <form method="post" action="/admin/orders/{{ order.id }}/approve">
+              <button type="submit">Approve</button>
+            </form>
+            <form method="post" action="/admin/orders/{{ order.id }}/status">
+              <select name="status">
+                <option value="printing">printing</option>
+                <option value="ready_for_pickup">ready_for_pickup</option>
+              </select>
+              <button type="submit">Update</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>
