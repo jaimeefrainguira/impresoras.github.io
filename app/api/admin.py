@@ -27,7 +27,7 @@ async def approve_order(order_id: int, db: Session = Depends(get_db)):
 
     order.status = OrderStatus.approved_for_print
     db.commit()
-    await wa.send_text(order.user.whatsapp_number, "✅ Payment verified. Your order is approved for print.")
+    await wa.send_text(order.user.whatsapp_number, "✅ Pago verificado. Tu pedido fue aprobado para impresión.")
     return RedirectResponse(url="/admin/orders", status_code=303)
 
 
@@ -41,8 +41,8 @@ async def update_status(order_id: int, status: str = Form(...), db: Session = De
     db.commit()
 
     notifications = {
-        OrderStatus.printing: "🖨️ Your order has entered printing process.",
-        OrderStatus.ready_for_pickup: "📦 Your print is ready for pickup.",
+        OrderStatus.printing: "🖨️ Tu pedido ingresó a proceso de impresión.",
+        OrderStatus.ready_for_pickup: "📦 Tu impresión está lista para retiro.",
     }
     note = notifications.get(order.status)
     if note:

@@ -1,8 +1,8 @@
-# WhatsApp Printing Order System
+# Sistema de Pedidos de Impresión por WhatsApp
 
-Production-ready starter implementation for automated print ordering through WhatsApp Business Cloud API.
+Implementación base orientada a producción para automatizar pedidos de impresión usando WhatsApp Business Cloud API.
 
-## 1) Full Backend Project Structure
+## 1) Estructura completa del backend
 
 ```text
 app/
@@ -35,44 +35,45 @@ sql/
 requirements.txt
 ```
 
-## 2) Database Schema
-- PostgreSQL schema is in `sql/schema.sql` and includes `users`, `orders`, `print_prices`, and `payments`.
+## 2) Esquema de base de datos
+- El esquema PostgreSQL está en `sql/schema.sql` e incluye las tablas `users`, `orders`, `print_prices` y `payments`.
 
-## 3) WhatsApp Webhook Code
-- `app/api/webhook.py` handles verification (`GET`) and message events (`POST`).
-- Supports text + document/image message flows.
+## 3) Código de webhook de WhatsApp
+- `app/api/webhook.py` maneja verificación (`GET`) y eventos entrantes (`POST`).
+- Soporta mensajes de texto y documentos/imágenes.
+- Descarga archivos reales usando el `media_id` de WhatsApp Cloud API.
 
-## 4) Conversation Flow Logic
-- `app/services/conversation.py` provides state-machine behavior:
-  - file received -> ask size
-  - ask print type
-  - ask material
-  - if not Papel Bond -> handoff to human
-  - else calculate price and request payment receipt
-  - payment receipt -> payment review
+## 4) Lógica de flujo conversacional
+- `app/services/conversation.py` implementa la máquina de estados:
+  - archivo recibido -> pedir tamaño
+  - pedir tipo de impresión
+  - pedir material
+  - si no es Papel Bond -> derivar a operador
+  - si es Papel Bond -> calcular precio y solicitar comprobante
+  - comprobante recibido -> estado de revisión de pago
 
-## 5) Price Calculation Service
-- `app/services/pricing.py` reads `print_prices` and applies formulas:
+## 5) Servicio de cálculo de precios
+- `app/services/pricing.py` consulta `print_prices` y aplica:
   - color: `base_price + price_color * pages`
-  - black/white: `base_price + price_bw * pages`
+  - blanco/negro: `base_price + price_bw * pages`
 
-## 6) Admin Dashboard Basic UI
-- `/admin/orders` renders `app/templates/dashboard.html`.
-- Allows approving payment and moving status to printing / ready_for_pickup.
+## 6) Panel administrativo básico
+- `/admin/orders` renderiza `app/templates/dashboard.html`.
+- Permite aprobar pagos y mover estados a `printing` / `ready_for_pickup`.
 
-## 7) API Endpoints
+## 7) Endpoints API
 - `GET /health`
-- `GET /webhooks/whatsapp` (verify callback)
-- `POST /webhooks/whatsapp` (incoming WhatsApp events)
-- `GET /api/orders` (JSON order list)
-- `GET /admin/orders` (dashboard)
+- `GET /webhooks/whatsapp` (verificación)
+- `POST /webhooks/whatsapp` (eventos entrantes)
+- `GET /api/orders` (listado JSON)
+- `GET /admin/orders` (panel)
 - `POST /admin/orders/{id}/approve`
 - `POST /admin/orders/{id}/status`
 
-## 8) Example Configuration
-- `.env.example` includes app, DB, storage, and WhatsApp variables.
+## 8) Configuración de ejemplo
+- `.env.example` contiene variables de app, base de datos, almacenamiento y WhatsApp.
 
-## Run
+## Ejecutar
 
 ```bash
 python -m venv .venv
@@ -82,4 +83,4 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-Open dashboard at `http://localhost:8000/admin/orders`.
+Abre el panel en `http://localhost:8000/admin/orders`.

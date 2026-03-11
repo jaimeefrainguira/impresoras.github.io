@@ -1,10 +1,13 @@
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models.entities import Order, Payment, User
 from app.models.enums import OrderStatus
 from app.services.pricing import PricingService
 from app.services.storage import save_bytes
 from app.services.whatsapp import WhatsAppClient
+
+settings = get_settings()
 
 ALLOWED_SIZES = {"A4", "A3", "A2", "A1", "A0"}
 ALLOWED_TYPES = {"COLOR": "color", "BLACK AND WHITE": "black_white", "BLACK_WHITE": "black_white"}
@@ -39,47 +42,47 @@ class ConversationService:
 
         await self.whatsapp.send_text(
             from_number,
-            "What size do you want to print?\nOptions: A4, A3, A2, A1, A0",
+            "¿Qué tamaño deseas imprimir?\nOpciones: A4, A3, A2, A1, A0",
         )
 
     async def handle_text(self, db: Session, from_number: str, text: str) -> None:
         order = self._get_active_order(db, from_number)
         if not order:
-            await self.whatsapp.send_text(from_number, "Please send a file to start your print order.")
+            await self.whatsapp.send_text(from_number, "Primero envía un archivo para iniciar tu pedido de impresión.")
             return
 
         clean_text = text.strip().upper()
 
         if order.conversation_step == "awaiting_size":
             if clean_text not in ALLOWED_SIZES:
-                await self.whatsapp.send_text(from_number, "Invalid size. Please choose one of: A4, A3, A2, A1, A0")
+                await self.whatsapp.send_text(from_number, "Tamaño inválido. Elige: A4, A3, A2, A1 o A0")
                 return
             order.size = clean_text
             order.conversation_step = "awaiting_print_type"
             db.commit()
             await self.whatsapp.send_text(
                 from_number,
-                "Do you want the print in color or black and white?\nOptions: Color, Black and White",
+                "¿Deseas impresión a color o blanco y negro?\nOpciones: Color, Black and White",
             )
             return
 
         if order.conversation_step == "awaiting_print_type":
             normalized = ALLOWED_TYPES.get(clean_text)
             if not normalized:
-                await self.whatsapp.send_text(from_number, "Invalid type. Choose Color or Black and White.")
+                await self.whatsapp.send_text(from_number, "Tipo inválido. Escribe: Color o Black and White.")
                 return
             order.print_type = normalized
             order.conversation_step = "awaiting_material"
             db.commit()
             await self.whatsapp.send_text(
                 from_number,
-                "What material do you want to print on?\nOptions: Papel Bond, Cartulina, Other",
+                "¿Sobre qué material deseas imprimir?\nOpciones: Papel Bond, Cartulina, Other",
             )
             return
 
         if order.conversation_step == "awaiting_material":
             if clean_text not in ALLOWED_MATERIALS:
-                await self.whatsapp.send_text(from_number, "Invalid material. Choose Papel Bond, Cartulina, or Other.")
+                await self.whatsapp.send_text(from_number, "Material inválido. Elige: Papel Bond, Cartulina u Other.")
                 return
 
             order.material = clean_text.title()
@@ -91,7 +94,10 @@ class ConversationService:
                 db.commit()
                 await self.whatsapp.send_text(
                     from_number,
-                    "An operator will assist you to coordinate this material.",
+                    "Un operador te asistirá para coordinar este material.",
+                )
+                await self._notify_admin(
+                    f"⚠️ Pedido #{order.id} requiere atención humana. Material solicitado: {order.material}."
                 )
                 return
 
@@ -103,7 +109,7 @@ class ConversationService:
             return
 
         if order.conversation_step == "awaiting_payment_receipt":
-            await self.whatsapp.send_text(from_number, "Please send your payment receipt image or PDF.")
+            await self.whatsapp.send_text(from_number, "Por favor envía la imagen o PDF del comprobante de pago.")
             return
 
     async def handle_payment_receipt(
@@ -115,7 +121,7 @@ class ConversationService:
     ) -> None:
         order = self._get_active_order(db, from_number)
         if not order:
-            await self.whatsapp.send_text(from_number, "No active order found. Send a file to begin.")
+            await self.whatsapp.send_text(from_number, "No encontramos un pedido activo. Envía un archivo para comenzar.")
             return
 
         path = save_bytes(file_bytes, file_name)
@@ -125,7 +131,8 @@ class ConversationService:
         db.add(payment)
         db.commit()
 
-        await self.whatsapp.send_text(from_number, "Payment receipt received. Our team will verify it shortly.")
+        await self.whatsapp.send_text(from_number, "Comprobante recibido. Nuestro equipo lo validará en breve.")
+        await self._notify_admin(f"💳 Pedido #{order.id} recibió comprobante y está en revisión de pago.")
 
     def _get_or_create_user(self, db: Session, from_number: str) -> User:
         user = db.query(User).filter(User.whatsapp_number == from_number).first()
@@ -156,14 +163,19 @@ class ConversationService:
             .first()
         )
 
+    async def _notify_admin(self, message: str) -> None:
+        if settings.admin_notify_phone:
+            await self.whatsapp.send_text(settings.admin_notify_phone, message)
+
     def _summary_message(self, order: Order) -> str:
+        type_label = "Color" if order.print_type == "color" else "Blanco y Negro"
         return (
-            "📄 Print Order Summary\n\n"
-            f"Size: {order.size}\n"
-            f"Type: {order.print_type}\n"
+            "📄 Resumen de impresión\n\n"
+            f"Tamaño: {order.size}\n"
+            f"Tipo: {type_label}\n"
             f"Material: {order.material}\n"
-            f"Pages: {order.pages}\n\n"
-            f"Total price: ${order.total_price}\n\n"
-            "Payment methods:\n- DeUna\n- Bank Transfer\n\n"
-            "Please send the payment receipt here."
+            f"Páginas: {order.pages}\n\n"
+            f"Total: ${order.total_price}\n\n"
+            "Métodos de pago:\n- DeUna\n- Transferencia Bancaria\n\n"
+            "Por favor envía aquí tu comprobante de pago."
         )

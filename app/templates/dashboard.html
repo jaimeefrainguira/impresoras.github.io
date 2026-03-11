@@ -1,23 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Print Orders Admin</title>
+  <title>Panel de Pedidos de Impresión</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   <main class="container">
-    <h1>Printing Orders Dashboard</h1>
+    <h1>Panel de Pedidos de Impresión</h1>
     <table>
       <thead>
         <tr>
           <th>ID</th>
-          <th>Status</th>
-          <th>File</th>
-          <th>Options</th>
+          <th>Estado</th>
+          <th>Archivo</th>
+          <th>Opciones</th>
           <th>Total</th>
-          <th>Actions</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -30,14 +30,14 @@
           <td>${{ order.total_price or '-' }}</td>
           <td>
             <form method="post" action="/admin/orders/{{ order.id }}/approve">
-              <button type="submit">Approve</button>
+              <button type="submit">Aprobar</button>
             </form>
             <form method="post" action="/admin/orders/{{ order.id }}/status">
               <select name="status">
                 <option value="printing">printing</option>
                 <option value="ready_for_pickup">ready_for_pickup</option>
               </select>
-              <button type="submit">Update</button>
+              <button type="submit">Actualizar</button>
             </form>
           </td>
         </tr>
